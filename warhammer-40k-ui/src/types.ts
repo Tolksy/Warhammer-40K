@@ -1,5 +1,12 @@
 export type Inches = number
 
+export interface Position {
+  /** X coordinate on a 60\" wide battlefield (inches) */
+  x: number
+  /** Y coordinate on a 44\" deep battlefield (inches) */
+  y: number
+}
+
 export interface Stats {
   /** Movement characteristic in inches (e.g. 6 = 6\") */
   movement: Inches
@@ -58,6 +65,8 @@ export interface UnitInstance extends UnitTemplate {
   /** Unique runtime identifier for this unit on the battlefield */
   id: string
   models: ModelInstance[]
+  /** Current position of the unit on the battlefield */
+  position: Position
 }
 
 

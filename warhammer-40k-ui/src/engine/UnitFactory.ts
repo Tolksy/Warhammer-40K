@@ -1,3 +1,5 @@
+import type { Position, UnitInstance, UnitTemplate } from '../types'
+
 /**
  * Very small helper to create a reasonably unique ID for each unit instance.
  * This is not cryptographically secure, but is more than sufficient
@@ -8,16 +10,14 @@ const createId = () =>
 
 /**
  * Create a runtime unit instance from a unit template.
- * Adds a unique `id` and initialises `currentWounds` on each model
- * based on its profile's `stats.wounds`.
- *
- * @param {import('../types').UnitTemplate} template
- * @returns {import('../types').UnitInstance}
+ * Adds a unique `id`, initialises `currentWounds` on each model
+ * based on its profile's `stats.wounds`, and assigns a starting position.
  */
-export function createUnitInstance(template) {
+export function createUnitInstance(template: UnitTemplate, position: Position): UnitInstance {
   return {
     ...template,
     id: createId(),
+    position,
     models: template.models.map((model) => ({
       ...model,
       currentWounds: model.stats.wounds,

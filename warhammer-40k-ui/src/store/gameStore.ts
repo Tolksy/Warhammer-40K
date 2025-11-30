@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { UnitInstance } from '../types'
+import type { Position, UnitInstance } from '../types'
 import { spaceMarineUnits } from '../data/space_marines'
 import { necronUnits } from '../data/necrons'
 import { createUnitInstance } from '../engine/UnitFactory'
@@ -33,9 +33,32 @@ export interface GameState {
 
 const phaseOrder: TurnPhase[] = ['COMMAND', 'MOVEMENT', 'SHOOTING', 'CHARGE', 'FIGHT']
 
-const initialUnits: UnitInstance[] = [...spaceMarineUnits, ...necronUnits].map((template) =>
-  createUnitInstance(template),
-)
+const BOARD_WIDTH = 60
+const BOARD_HEIGHT = 44
+
+const spawnLine = (count: number, y: number): Position[] => {
+  if (count === 0) return []
+  const segment = BOARD_WIDTH / (count + 1)
+  return Array.from({ length: count }, (_, idx) => ({
+    x: segment * (idx + 1),
+    y,
+  }))
+}
+
+const initialUnits: UnitInstance[] = (() => {
+  const marinePositions = spawnLine(spaceMarineUnits.length, 8)
+  const necronPositions = spawnLine(necronUnits.length, BOARD_HEIGHT - 8)
+
+  const marines = spaceMarineUnits.map((template, index) =>
+    createUnitInstance(template, marinePositions[index] ?? { x: 10 + index * 6, y: 8 }),
+  )
+
+  const necrons = necronUnits.map((template, index) =>
+    createUnitInstance(template, necronPositions[index] ?? { x: 10 + index * 6, y: BOARD_HEIGHT - 8 }),
+  )
+
+  return [...marines, ...necrons]
+})()
 
 export const useGameStore = create<GameState>((set) => ({
   units: initialUnits,
