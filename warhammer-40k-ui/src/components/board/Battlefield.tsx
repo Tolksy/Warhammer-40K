@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { UnitToken } from './UnitToken'
 
@@ -8,12 +9,51 @@ const Battlefield = () => {
   const units = useGameStore((state) => state.units)
   const selection = useGameStore((state) => state.selection)
   const selectUnit = useGameStore((state) => state.selectUnit)
+  const setTargetUnit = useGameStore((state) => state.setTargetUnit)
+  const moveUnit = useGameStore((state) => state.moveUnit)
 
-  const handleUnitClick = (id: string) => {
+  const [moveError, setMoveError] = useState<string | null>(null)
+
+  const selectedUnit = units.find((u) => u.id === selection.selectedUnitId) ?? null
+
+  const handleUnitClick = (event: React.MouseEvent<HTMLButtonElement>, id: string) => {
+    const clickedUnit = units.find((u) => u.id === id)
+
+    if (!clickedUnit) return
+
+    // Shift+click on a different unit sets it as target
+    if (event.shiftKey && selection.selectedUnitId && selection.selectedUnitId !== id) {
+      setTargetUnit(id)
+      return
+    }
+
+    // Normal click selects the unit
     if (selection.selectedUnitId === id) {
       selectUnit(null)
+      setTargetUnit(null)
     } else {
       selectUnit(id)
+      // Clear target if selecting a new unit
+      setTargetUnit(null)
+    }
+  }
+
+  const handleBattlefieldClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!selection.selectedUnitId) return
+
+    const rect = event.currentTarget.getBoundingClientRect()
+    const relX = event.clientX - rect.left
+    const relY = event.clientY - rect.top
+
+    const x = (relX / rect.width) * BOARD_WIDTH
+    const y = (relY / rect.height) * BOARD_HEIGHT
+
+    const result = moveUnit(selection.selectedUnitId, { x, y })
+
+    if (!result.success) {
+      setMoveError(result.message)
+    } else {
+      setMoveError(null)
     }
   }
 
@@ -28,7 +68,17 @@ const Battlefield = () => {
         {/* Subtle grid background for the battlefield */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,#1f2937_1px,transparent_0)] [background-size:24px_24px]" />
 
-        <div className="relative z-10 h-full w-full">
+        {moveError && (
+          <div className="pointer-events-none absolute inset-x-4 top-2 z-20 rounded bg-red-900/90 px-3 py-1 text-xs text-red-100 shadow">
+            {moveError}
+          </div>
+        )}
+
+        <div
+          className="relative z-10 h-full w-full"
+          onClick={handleBattlefieldClick}
+          role="presentation"
+        >
           {units.map((unit) => {
             const { x, y } = unit.position
             const left = (x / BOARD_WIDTH) * 100
@@ -47,7 +97,8 @@ const Battlefield = () => {
                 <UnitToken
                   unit={unit}
                   isSelected={selection.selectedUnitId === unit.id}
-                  onClick={() => handleUnitClick(unit.id)}
+                  isTarget={selection.targetUnitId === unit.id}
+                  onClick={(event) => handleUnitClick(event, unit.id)}
                 />
               </div>
             )

@@ -14,6 +14,11 @@ export interface ShootingResult {
   slainModels: number
   logs: ShootingLogEntry[]
   updatedTarget: UnitInstance
+  // Dice detail for UI dice tray
+  hitRolls?: number[]
+  woundRolls?: number[]
+  saveRolls?: number[]
+  damageRolls?: number[]
 }
 
 const getPrimaryProfile = (unit: UnitInstance) => unit.models[0]
@@ -88,6 +93,10 @@ export function resolveShootingAttack(input: ShootingAttackInput): ShootingResul
       slainModels: 0,
       logs: [{ message: `${weapon.name} is not a ranged weapon.` }],
       updatedTarget: target,
+      hitRolls: [],
+      woundRolls: [],
+      saveRolls: [],
+      damageRolls: [],
     }
   }
 
@@ -105,6 +114,10 @@ export function resolveShootingAttack(input: ShootingAttackInput): ShootingResul
       slainModels: 0,
       logs: [{ message: `${weapon.name} is out of range (${distance.toFixed(1)}").` }],
       updatedTarget: target,
+      hitRolls: [],
+      woundRolls: [],
+      saveRolls: [],
+      damageRolls: [],
     }
   }
 
@@ -126,6 +139,10 @@ export function resolveShootingAttack(input: ShootingAttackInput): ShootingResul
       slainModels: 0,
       logs,
       updatedTarget: target,
+      hitRolls,
+      woundRolls: [],
+      saveRolls: [],
+      damageRolls: [],
     }
   }
 
@@ -149,6 +166,10 @@ export function resolveShootingAttack(input: ShootingAttackInput): ShootingResul
       slainModels: 0,
       logs,
       updatedTarget: target,
+      hitRolls,
+      woundRolls,
+      saveRolls: [],
+      damageRolls: [],
     }
   }
 
@@ -171,6 +192,10 @@ export function resolveShootingAttack(input: ShootingAttackInput): ShootingResul
       slainModels: 0,
       logs,
       updatedTarget: target,
+      hitRolls,
+      woundRolls,
+      saveRolls,
+      damageRolls: [],
     }
   }
 
@@ -194,6 +219,10 @@ export function resolveShootingAttack(input: ShootingAttackInput): ShootingResul
     slainModels: allocation.slainModels,
     logs,
     updatedTarget: allocation.updatedTarget,
+    hitRolls,
+    woundRolls,
+    saveRolls,
+    damageRolls: damagePerWound,
   }
 }
 

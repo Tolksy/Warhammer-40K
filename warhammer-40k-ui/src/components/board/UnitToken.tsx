@@ -4,10 +4,11 @@ import type { UnitInstance } from '../../types'
 interface UnitTokenProps {
   unit: UnitInstance
   isSelected: boolean
-  onClick: () => void
+  isTarget?: boolean
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void
 }
 
-export const UnitToken = ({ unit, isSelected, onClick }: UnitTokenProps) => {
+export const UnitToken = ({ unit, isSelected, isTarget, onClick }: UnitTokenProps) => {
   const modelCount = unit.models.length
   const totalWounds = unit.models.reduce((sum, model) => sum + model.stats.wounds, 0)
   const currentWounds = unit.models.reduce((sum, model) => sum + model.currentWounds, 0)
@@ -25,12 +26,16 @@ export const UnitToken = ({ unit, isSelected, onClick }: UnitTokenProps) => {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={(event) => {
+        event.stopPropagation()
+        onClick(event)
+      }}
       className={clsx(
         'relative flex h-20 w-36 flex-col justify-between rounded-lg border px-3 py-2 text-left text-xs shadow-md transition',
         'border-slate-600 bg-slate-900/80 hover:border-grimdark-accent hover:shadow-lg',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-grimdark-accent',
-        isSelected && 'ring-2 ring-grimdark-accent',
+        isSelected && 'ring-2 ring-yellow-400',
+        isTarget && 'ring-2 ring-red-400',
       )}
     >
       {/* Engagement ring (1\" aura visualised as a subtle halo) */}

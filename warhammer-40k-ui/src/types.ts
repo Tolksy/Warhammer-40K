@@ -67,6 +67,8 @@ export interface UnitInstance extends UnitTemplate {
   models: ModelInstance[]
   /** Current position of the unit on the battlefield */
   position: Position
+  /** If true, this unit is currently battleshocked and has OC treated as 0 */
+  battleshocked?: boolean
 }
 
 

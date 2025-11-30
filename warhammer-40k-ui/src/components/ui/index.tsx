@@ -1,4 +1,6 @@
-// Placeholder export for shared UI components (HUD, dice tray, sidebar, etc.)
-export {}
+export { default as BattleLog } from './BattleLog'
+export { default as UnitCard } from './UnitCard'
+export { default as ShootingPanel } from './ShootingPanel'
+export { default as DiceTray } from './DiceTray'
 
 
