@@ -1,5 +1,7 @@
 export type Inches = number
 
+export type PlayerId = 'Player 1' | 'Player 2'
+
 export interface Position {
   /** X coordinate on a 60\" wide battlefield (inches) */
   x: number
@@ -64,6 +66,8 @@ export interface ModelInstance extends ModelProfile {
 export interface UnitInstance extends UnitTemplate {
   /** Unique runtime identifier for this unit on the battlefield */
   id: string
+  /** Which player currently controls this unit */
+  owner: PlayerId
   models: ModelInstance[]
   /** Current position of the unit on the battlefield */
   position: Position

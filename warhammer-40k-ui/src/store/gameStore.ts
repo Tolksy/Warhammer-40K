@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Position, UnitInstance } from '../types'
+import type { PlayerId, Position, UnitInstance } from '../types'
 import { spaceMarineUnits } from '../data/space_marines'
 import { necronUnits } from '../data/necrons'
 import { createUnitInstance } from '../engine/UnitFactory'
@@ -7,7 +7,7 @@ import { validateMove } from '../engine/Movement'
 import { rollD6 } from '../engine/Dice'
 import { resolveShootingAttack, type ShootingResult } from '../engine/ShootingPhase'
 
-export type Player = 'Player 1' | 'Player 2'
+export type Player = PlayerId
 
 export type TurnPhase = 'COMMAND' | 'MOVEMENT' | 'SHOOTING' | 'CHARGE' | 'FIGHT'
 
@@ -34,6 +34,18 @@ export interface ObjectiveMarker extends Position {
   id: string
 }
 
+export type GameView = 'MENU' | 'SKIRMISH'
+
+export type FactionId = 'Space Marines' | 'Necrons'
+
+export type SkirmishSize = 'PATROL' | 'INCURSION' | 'STRIKE_FORCE'
+
+export interface SkirmishConfig {
+  player1Faction: FactionId | null
+  player2Faction: FactionId | null
+  size: SkirmishSize | null
+}
+
 export interface SelectionState {
   selectedUnitId: string | null
   targetUnitId: string | null
@@ -53,17 +65,19 @@ export interface MoveActionResult {
 
 export interface GameState {
   units: UnitInstance[]
+  gameView: GameView
   currentPlayer: Player
   turnPhase: TurnPhase
   turnNumber: number
   cp: CommandPoints
-   /** Victory points for each player */
+  /** Victory points for each player */
   vp: VictoryPoints
   selection: SelectionState
   battleLog: BattleLogEntry[]
   /** Last dice rolls, for dice tray UI */
   diceRolls: DiceRollSummary | null
   objectiveMarkers: ObjectiveMarker[]
+  config: SkirmishConfig
 
   selectUnit: (unitId: string | null) => void
   setTargetUnit: (unitId: string | null) => void
@@ -74,6 +88,9 @@ export interface GameState {
   clearDiceRolls: () => void
   resolveBattleshock: () => void
   scoreObjectivesForCurrentPlayer: () => void
+  setConfig: (partial: Partial<SkirmishConfig>) => void
+  startSkirmish: () => void
+  resetGame: () => void
 }
 
 const phaseOrder: TurnPhase[] = ['COMMAND', 'MOVEMENT', 'SHOOTING', 'CHARGE', 'FIGHT']
@@ -90,20 +107,46 @@ const spawnLine = (count: number, y: number): Position[] => {
   }))
 }
 
-const initialUnits: UnitInstance[] = (() => {
-  const marinePositions = spawnLine(spaceMarineUnits.length, 8)
-  const necronPositions = spawnLine(necronUnits.length, BOARD_HEIGHT - 8)
+const defaultConfig: SkirmishConfig = {
+  player1Faction: null,
+  player2Faction: null,
+  size: null,
+}
 
-  const marines = spaceMarineUnits.map((template, index) =>
-    createUnitInstance(template, marinePositions[index] ?? { x: 10 + index * 6, y: 8 }),
+const sizeToUnitCount: Record<SkirmishSize, number> = {
+  PATROL: 3,
+  INCURSION: 5,
+  STRIKE_FORCE: 7,
+}
+
+const templatesForFaction = (faction: FactionId) =>
+  faction === 'Space Marines' ? spaceMarineUnits : necronUnits
+
+const createUnitsForConfig = (config: SkirmishConfig): UnitInstance[] => {
+  if (!config.player1Faction || !config.player2Faction || !config.size) return []
+
+  const maxUnits = sizeToUnitCount[config.size]
+
+  const p1Templates = templatesForFaction(config.player1Faction).slice(0, maxUnits)
+  const p2Templates = templatesForFaction(config.player2Faction).slice(0, maxUnits)
+
+  const p1Positions = spawnLine(p1Templates.length, 8)
+  const p2Positions = spawnLine(p2Templates.length, BOARD_HEIGHT - 8)
+
+  const p1Units = p1Templates.map((template, index) =>
+    createUnitInstance(template, 'Player 1', p1Positions[index] ?? { x: 10 + index * 6, y: 8 }),
   )
 
-  const necrons = necronUnits.map((template, index) =>
-    createUnitInstance(template, necronPositions[index] ?? { x: 10 + index * 6, y: BOARD_HEIGHT - 8 }),
+  const p2Units = p2Templates.map((template, index) =>
+    createUnitInstance(
+      template,
+      'Player 2',
+      p2Positions[index] ?? { x: 10 + index * 6, y: BOARD_HEIGHT - 8 },
+    ),
   )
 
-  return [...marines, ...necrons]
-})()
+  return [...p1Units, ...p2Units]
+}
 
 const createLogId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -114,7 +157,8 @@ const OBJECTIVES: ObjectiveMarker[] = [
 ]
 
 export const useGameStore = create<GameState>((set, get) => ({
-  units: initialUnits,
+  units: [],
+  gameView: 'MENU',
   currentPlayer: 'Player 1',
   turnPhase: 'COMMAND',
   turnNumber: 1,
@@ -124,6 +168,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   battleLog: [],
   diceRolls: null,
   objectiveMarkers: OBJECTIVES,
+  config: defaultConfig,
 
   selectUnit: (unitId) =>
     set((state) => ({
@@ -297,10 +342,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const rollsDescription: string[] = []
 
     set((state) => {
-      const factionForPlayer = state.currentPlayer === 'Player 1' ? 'Space Marines' : 'Necrons'
-
       const units = state.units.map((unit) => {
-        if (unit.faction !== factionForPlayer) return unit
+        if (unit.owner !== state.currentPlayer) return unit
 
         const startingModels = unit.models.length
         const aliveModels = unit.models.filter((m) => m.currentWounds > 0).length
@@ -346,8 +389,6 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   scoreObjectivesForCurrentPlayer: () => {
     set((state) => {
-      const factionForPlayer = state.currentPlayer === 'Player 1' ? 'Space Marines' : 'Necrons'
-
       const ocForUnit = (unit: UnitInstance): number => {
         if (unit.battleshocked) return 0
         const primary = unit.models[0]
@@ -364,7 +405,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       state.objectiveMarkers.forEach((obj) => {
         state.units.forEach((unit) => {
-          if (unit.faction !== factionForPlayer) return
+          if (unit.owner !== state.currentPlayer) return
           if (distance(unit.position, obj) <= 3) {
             totalOC += ocForUnit(unit)
           }
@@ -393,6 +434,60 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     })
   },
+
+  setConfig: (partial) =>
+    set((state) => ({
+      ...state,
+      config: {
+        ...state.config,
+        ...partial,
+      },
+    })),
+
+  startSkirmish: () =>
+    set((state) => {
+      const units = createUnitsForConfig(state.config)
+
+      if (units.length === 0) {
+        return state
+      }
+
+      const newLog: BattleLogEntry = {
+        id: createLogId(),
+        text: `Skirmish started: Player 1 (${state.config.player1Faction}), Player 2 (${state.config.player2Faction}), size ${state.config.size}.`,
+        turn: 1,
+        phase: 'COMMAND',
+      }
+
+      return {
+        ...state,
+        units,
+        gameView: 'SKIRMISH',
+        currentPlayer: 'Player 1',
+        turnPhase: 'COMMAND',
+        turnNumber: 1,
+        cp: { player1: 0, player2: 0 },
+        vp: { player1: 0, player2: 0 },
+        selection: { selectedUnitId: null, targetUnitId: null },
+        battleLog: [newLog],
+        diceRolls: null,
+      }
+    }),
+
+  resetGame: () =>
+    set((state) => ({
+      ...state,
+      units: [],
+      gameView: 'MENU',
+      currentPlayer: 'Player 1',
+      turnPhase: 'COMMAND',
+      turnNumber: 1,
+      cp: { player1: 0, player2: 0 },
+      vp: { player1: 0, player2: 0 },
+      selection: { selectedUnitId: null, targetUnitId: null },
+      battleLog: [],
+      diceRolls: null,
+    })),
 }))
 
 
