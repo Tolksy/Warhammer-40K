@@ -1,9 +1,10 @@
+import type { UnitTemplate } from '../types'
+
 // NOTE: These stats are intended to be representative of 10th Edition datasheets
 // for demo and testing purposes in the Grimdark Engine. If you want to be
 // tournament-accurate, swap these out for your exact codex values.
 
-/** @type {import('../types').UnitTemplate[]} */
-export const spaceMarineUnits = [
+export const spaceMarineUnits: UnitTemplate[] = [
   // Battleline – Intercessor Squad
   {
     name: 'Intercessor Squad',
@@ -139,6 +140,5 @@ export const spaceMarineUnits = [
     ],
   },
 ]
-
 
 

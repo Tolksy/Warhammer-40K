@@ -14,8 +14,6 @@ const Battlefield = () => {
 
   const [moveError, setMoveError] = useState<string | null>(null)
 
-  const selectedUnit = units.find((u) => u.id === selection.selectedUnitId) ?? null
-
   const handleUnitClick = (event: React.MouseEvent<HTMLButtonElement>, id: string) => {
     const clickedUnit = units.find((u) => u.id === id)
 

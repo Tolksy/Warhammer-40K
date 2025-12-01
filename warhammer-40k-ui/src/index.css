@@ -1,12 +1,16 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-:root {
-  color-scheme: dark;
+@theme {
+  --color-grimdark-bg: #05060a;
+  --color-grimdark-panel: #111827;
+  --color-grimdark-accent: #facc15;
+  --color-grimdark-danger: #ef4444;
 }
 
 body {
-  @apply bg-grimdark-bg text-slate-100 antialiased;
+  background-color: var(--color-grimdark-bg);
+  color: #e5e7eb; /* slate-100-ish */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
