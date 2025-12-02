@@ -1,36 +1,53 @@
 import './App.css'
+import { useState } from 'react'
+import { GameScreen } from './components/ui/GameScreen'
+import { GameSettingsScreen } from './components/ui/GameSettingsScreen'
+import { MainMenu } from './components/ui/MainMenu'
 
-// Fresh UI stub – we deliberately keep all the game rules/engine code in src/engine and src/types,
-// but render only a minimal placeholder UI for now.
+type View = 'MENU' | 'SETTINGS' | 'GAME'
+
+export type Faction = 'Space Marines' | 'Necrons'
+export type ArmySize = 'Patrol' | 'Incursion' | 'Strike Force'
+export type MapId = 'Dawn of War' | 'Sweep and Clear' | 'Urban Ruins'
+
+export interface GameSettings {
+  player1Faction: Faction
+  player2Faction: Faction
+  armySize: ArmySize
+  map: MapId
+}
 
 function App() {
+  const [view, setView] = useState<View>('MENU')
+
+  const [settings, setSettings] = useState<GameSettings>({
+    player1Faction: 'Space Marines',
+    player2Faction: 'Necrons',
+    armySize: 'Patrol',
+    map: 'Dawn of War',
+  })
+
+  if (view === 'SETTINGS') {
+    return (
+      <GameSettingsScreen
+        settings={settings}
+        onChange={setSettings}
+        onBack={() => setView('MENU')}
+        onStartGame={() => setView('GAME')}
+      />
+    )
+  }
+
+  if (view === 'GAME') {
+    return <GameScreen settings={settings} onBackToMenu={() => setView('MENU')} />
+  }
+
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#000', color: '#f9fafb' }}>
-      <div
-        style={{
-          maxWidth: 640,
-          margin: '0 auto',
-          padding: '4rem 1rem',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          textAlign: 'center',
-          gap: '1rem',
-        }}
-      >
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-          Warhammer 40,000 – 10th Edition
-        </h1>
-        <p style={{ fontSize: '0.9rem', color: '#9ca3af' }}>
-          Fresh start. The core game rules and engine logic are preserved under <code>src/engine</code> and
-          <code> src/types.ts</code>, but the UI has been reset to this minimal placeholder.
-        </p>
-        <p style={{ fontSize: '0.9rem', color: '#9ca3af' }}>
-          Next step: design a new main menu and skirmish flow on top of the existing rules engine.
-        </p>
-      </div>
-    </div>
+    <MainMenu
+      onPlay={() => setView('GAME')}
+      onArmyPainter={() => alert('Army Painter is coming soon.')}
+      onGameSettings={() => setView('SETTINGS')}
+    />
   )
 }
 
