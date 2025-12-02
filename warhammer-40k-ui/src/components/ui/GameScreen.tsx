@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type MouseEvent } from 'react'
 import type { GameSettings, MapId, Faction } from '../../App'
 import { spaceMarineUnits } from '../../data/space_marines'
 import { necronUnits } from '../../data/necrons'
@@ -64,6 +64,7 @@ interface DisplayUnit {
   name: string
   owner: Owner
   faction: Faction
+  movement: number // inches
   x: number // 0–1 normalized
   y: number // 0–1 normalized
 }
@@ -96,6 +97,7 @@ const spawnLine = (count: number, y: number, owner: Owner, faction: Faction): Di
     name: template.name,
     owner,
     faction,
+    movement: template.models[0]?.stats.movement ?? 6,
     x: segment * (index + 1),
     y,
   }))
@@ -104,6 +106,8 @@ const spawnLine = (count: number, y: number, owner: Owner, faction: Faction): Di
 export function GameScreen({ settings, onBackToMenu }: GameScreenProps) {
   const mapConfig = MAP_CONFIGS[settings.map]
   const [units, setUnits] = useState<DisplayUnit[]>([])
+  const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null)
+  const [moveMessage, setMoveMessage] = useState<string | null>(null)
 
   // (Re)spawn units whenever settings change (e.g. new game)
   useEffect(() => {
@@ -111,7 +115,46 @@ export function GameScreen({ settings, onBackToMenu }: GameScreenProps) {
     const p1Units = spawnLine(count, 0.8, 'P1', settings.player1Faction)
     const p2Units = spawnLine(count, 0.2, 'P2', settings.player2Faction)
     setUnits([...p1Units, ...p2Units])
+    setSelectedUnitId(null)
+    setMoveMessage(null)
   }, [settings])
+
+  const handleUnitClick = (id: string) => {
+    setSelectedUnitId((current) => (current === id ? null : id))
+    setMoveMessage(null)
+  }
+
+  const handleBoardClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (!selectedUnitId) return
+
+    const rect = event.currentTarget.getBoundingClientRect()
+    const relX = event.clientX - rect.left
+    const relY = event.clientY - rect.top
+
+    const targetX = Math.min(Math.max(relX / rect.width, 0), 1)
+    const targetY = Math.min(Math.max(relY / rect.height, 0), 1)
+
+    const unit = units.find((u) => u.id === selectedUnitId)
+    if (!unit) return
+
+    const dxInches = (targetX - unit.x) * BOARD_WIDTH
+    const dyInches = (targetY - unit.y) * BOARD_HEIGHT
+    const distance = Math.sqrt(dxInches * dxInches + dyInches * dyInches)
+
+    if (distance > unit.movement) {
+      setMoveMessage(
+        `${unit.owner} – ${unit.name}: move of ${distance.toFixed(1)}" exceeds M${unit.movement}".`,
+      )
+      return
+    }
+
+    setUnits((prev) =>
+      prev.map((u) => (u.id === unit.id ? { ...u, x: targetX, y: targetY } : u)),
+    )
+    setMoveMessage(
+      `${unit.owner} – ${unit.name} moves ${distance.toFixed(1)}" (M${unit.movement}).`,
+    )
+  }
 
   return (
     <div
@@ -133,6 +176,11 @@ export function GameScreen({ settings, onBackToMenu }: GameScreenProps) {
       <p style={{ marginBottom: '1rem', fontSize: '0.9rem', color: '#9ca3af' }}>
         P1: {settings.player1Faction} · P2: {settings.player2Faction} · Size: {settings.armySize}
       </p>
+      {moveMessage && (
+        <p style={{ marginBottom: '0.75rem', fontSize: '0.85rem', color: '#facc15' }}>
+          {moveMessage}
+        </p>
+      )}
 
       <div
         style={{
@@ -154,6 +202,7 @@ export function GameScreen({ settings, onBackToMenu }: GameScreenProps) {
             overflow: 'hidden',
             backgroundColor: mapConfig.background,
           }}
+          onClick={handleBoardClick}
         >
           {/* Grid / texture overlay to differentiate maps visually */}
           <div
@@ -208,9 +257,21 @@ export function GameScreen({ settings, onBackToMenu }: GameScreenProps) {
                   backgroundColor: isP1 ? 'rgba(59,130,246,0.9)' : 'rgba(16,185,129,0.9)',
                   fontSize: '0.7rem',
                   whiteSpace: 'nowrap',
-                  border: '1px solid rgba(15,23,42,0.9)',
+                  border:
+                    selectedUnitId === unit.id
+                      ? '2px solid rgba(250,204,21,0.9)'
+                      : '1px solid rgba(15,23,42,0.9)',
+                  boxShadow:
+                    selectedUnitId === unit.id
+                      ? '0 0 10px rgba(250,204,21,0.8)'
+                      : 'none',
+                  cursor: 'pointer',
                 }}
                 title={`${unit.owner} – ${unit.name}`}
+                onClick={(ev) => {
+                  ev.stopPropagation()
+                  handleUnitClick(unit.id)
+                }}
               >
                 {unit.owner}: {unit.name}
               </div>
