@@ -108,9 +108,9 @@ const spawnLine = (count: number, y: number): Position[] => {
 }
 
 const defaultConfig: SkirmishConfig = {
-  player1Faction: null,
-  player2Faction: null,
-  size: null,
+  player1Faction: 'Space Marines',
+  player2Faction: 'Necrons',
+  size: 'PATROL',
 }
 
 const sizeToUnitCount: Record<SkirmishSize, number> = {
