@@ -1,4 +1,7 @@
-import type { GameSettings, MapId } from '../../App'
+import { useEffect, useState } from 'react'
+import type { GameSettings, MapId, Faction } from '../../App'
+import { spaceMarineUnits } from '../../data/space_marines'
+import { necronUnits } from '../../data/necrons'
 
 interface GameScreenProps {
   settings: GameSettings
@@ -54,8 +57,61 @@ const MAP_CONFIGS: Record<MapId, MapConfig> = {
 const BOARD_WIDTH = 60
 const BOARD_HEIGHT = 44
 
+type Owner = 'P1' | 'P2'
+
+interface DisplayUnit {
+  id: string
+  name: string
+  owner: Owner
+  faction: Faction
+  x: number // 0–1 normalized
+  y: number // 0–1 normalized
+}
+
+const armySizeToCount = (size: GameSettings['armySize']): number => {
+  switch (size) {
+    case 'Patrol':
+      return 3
+    case 'Incursion':
+      return 5
+    case 'Strike Force':
+      return 7
+    default:
+      return 3
+  }
+}
+
+const templatesForFaction = (faction: Faction) =>
+  faction === 'Space Marines' ? spaceMarineUnits : necronUnits
+
+const spawnLine = (count: number, y: number, owner: Owner, faction: Faction): DisplayUnit[] => {
+  if (count === 0) return []
+
+  const templates = templatesForFaction(faction)
+  const chosen = templates.slice(0, count)
+  const segment = 1 / (count + 1)
+
+  return chosen.map((template, index) => ({
+    id: `${owner}-${template.name}-${index}`,
+    name: template.name,
+    owner,
+    faction,
+    x: segment * (index + 1),
+    y,
+  }))
+}
+
 export function GameScreen({ settings, onBackToMenu }: GameScreenProps) {
   const mapConfig = MAP_CONFIGS[settings.map]
+  const [units, setUnits] = useState<DisplayUnit[]>([])
+
+  // (Re)spawn units whenever settings change (e.g. new game)
+  useEffect(() => {
+    const count = armySizeToCount(settings.armySize)
+    const p1Units = spawnLine(count, 0.8, 'P1', settings.player1Faction)
+    const p2Units = spawnLine(count, 0.2, 'P2', settings.player2Faction)
+    setUnits([...p1Units, ...p2Units])
+  }, [settings])
 
   return (
     <div
@@ -130,6 +186,34 @@ export function GameScreen({ settings, onBackToMenu }: GameScreenProps) {
                   boxShadow: '0 0 8px rgba(250,204,21,0.7)',
                 }}
               />
+            )
+          })}
+
+          {/* Units (simple tokens for now) */}
+          {units.map((unit) => {
+            const left = unit.x * 100
+            const top = unit.y * 100
+            const isP1 = unit.owner === 'P1'
+
+            return (
+              <div
+                key={unit.id}
+                style={{
+                  position: 'absolute',
+                  left: `${left}%`,
+                  top: `${top}%`,
+                  transform: 'translate(-50%, -50%)',
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  backgroundColor: isP1 ? 'rgba(59,130,246,0.9)' : 'rgba(16,185,129,0.9)',
+                  fontSize: '0.7rem',
+                  whiteSpace: 'nowrap',
+                  border: '1px solid rgba(15,23,42,0.9)',
+                }}
+                title={`${unit.owner} – ${unit.name}`}
+              >
+                {unit.owner}: {unit.name}
+              </div>
             )
           })}
         </div>
