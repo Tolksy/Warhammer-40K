@@ -53,7 +53,7 @@ const MAP_CONFIGS: Record<MapId, MapConfig> = {
   },
 }
 
-// Board aspect ratio 60" x 44"
+// Board aspect ratio 60" x 44" (we store unit positions in inches)
 const BOARD_WIDTH = 60
 const BOARD_HEIGHT = 44
 
@@ -65,8 +65,8 @@ interface DisplayUnit {
   owner: Owner
   faction: Faction
   movement: number // inches
-  x: number // 0–1 normalized
-  y: number // 0–1 normalized
+  x: number // inches (0 – BOARD_WIDTH)
+  y: number // inches (0 – BOARD_HEIGHT)
 }
 
 const armySizeToCount = (size: GameSettings['armySize']): number => {
@@ -85,12 +85,12 @@ const armySizeToCount = (size: GameSettings['armySize']): number => {
 const templatesForFaction = (faction: Faction) =>
   faction === 'Space Marines' ? spaceMarineUnits : necronUnits
 
-const spawnLine = (count: number, y: number, owner: Owner, faction: Faction): DisplayUnit[] => {
+const spawnLine = (count: number, yInches: number, owner: Owner, faction: Faction): DisplayUnit[] => {
   if (count === 0) return []
 
   const templates = templatesForFaction(faction)
   const chosen = templates.slice(0, count)
-  const segment = 1 / (count + 1)
+  const segment = BOARD_WIDTH / (count + 1)
 
   return chosen.map((template, index) => ({
     id: `${owner}-${template.name}-${index}`,
@@ -99,7 +99,7 @@ const spawnLine = (count: number, y: number, owner: Owner, faction: Faction): Di
     faction,
     movement: template.models[0]?.stats.movement ?? 6,
     x: segment * (index + 1),
-    y,
+    y: yInches,
   }))
 }
 
@@ -112,8 +112,8 @@ export function GameScreen({ settings, onBackToMenu }: GameScreenProps) {
   // (Re)spawn units whenever settings change (e.g. new game)
   useEffect(() => {
     const count = armySizeToCount(settings.armySize)
-    const p1Units = spawnLine(count, 0.8, 'P1', settings.player1Faction)
-    const p2Units = spawnLine(count, 0.2, 'P2', settings.player2Faction)
+    const p1Units = spawnLine(count, BOARD_HEIGHT * 0.8, 'P1', settings.player1Faction)
+    const p2Units = spawnLine(count, BOARD_HEIGHT * 0.2, 'P2', settings.player2Faction)
     setUnits([...p1Units, ...p2Units])
     setSelectedUnitId(null)
     setMoveMessage(null)
@@ -131,15 +131,21 @@ export function GameScreen({ settings, onBackToMenu }: GameScreenProps) {
     const relX = event.clientX - rect.left
     const relY = event.clientY - rect.top
 
-    const targetX = Math.min(Math.max(relX / rect.width, 0), 1)
-    const targetY = Math.min(Math.max(relY / rect.height, 0), 1)
+    const targetXInches = Math.min(
+      Math.max((relX / rect.width) * BOARD_WIDTH, 0),
+      BOARD_WIDTH,
+    )
+    const targetYInches = Math.min(
+      Math.max((relY / rect.height) * BOARD_HEIGHT, 0),
+      BOARD_HEIGHT,
+    )
 
     const unit = units.find((u) => u.id === selectedUnitId)
     if (!unit) return
 
-    const dxInches = (targetX - unit.x) * BOARD_WIDTH
-    const dyInches = (targetY - unit.y) * BOARD_HEIGHT
-    const distance = Math.sqrt(dxInches * dxInches + dyInches * dyInches)
+    const dx = targetXInches - unit.x
+    const dy = targetYInches - unit.y
+    const distance = Math.sqrt(dx * dx + dy * dy)
 
     if (distance > unit.movement) {
       setMoveMessage(
@@ -149,7 +155,9 @@ export function GameScreen({ settings, onBackToMenu }: GameScreenProps) {
     }
 
     setUnits((prev) =>
-      prev.map((u) => (u.id === unit.id ? { ...u, x: targetX, y: targetY } : u)),
+      prev.map((u) =>
+        u.id === unit.id ? { ...u, x: targetXInches, y: targetYInches } : u,
+      ),
     )
     setMoveMessage(
       `${unit.owner} – ${unit.name} moves ${distance.toFixed(1)}" (M${unit.movement}).`,
