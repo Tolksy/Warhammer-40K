@@ -107,7 +107,6 @@ export function GameScreen({ settings, onBackToMenu }: GameScreenProps) {
   const mapConfig = MAP_CONFIGS[settings.map]
   const [units, setUnits] = useState<DisplayUnit[]>([])
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null)
-  const [moveMessage, setMoveMessage] = useState<string | null>(null)
 
   // (Re)spawn units whenever settings change (e.g. new game)
   useEffect(() => {
@@ -116,12 +115,10 @@ export function GameScreen({ settings, onBackToMenu }: GameScreenProps) {
     const p2Units = spawnLine(count, BOARD_HEIGHT * 0.2, 'P2', settings.player2Faction)
     setUnits([...p1Units, ...p2Units])
     setSelectedUnitId(null)
-    setMoveMessage(null)
   }, [settings])
 
   const handleUnitClick = (id: string) => {
     setSelectedUnitId((current) => (current === id ? null : id))
-    setMoveMessage(null)
   }
 
   const handleBoardClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -143,24 +140,10 @@ export function GameScreen({ settings, onBackToMenu }: GameScreenProps) {
     const unit = units.find((u) => u.id === selectedUnitId)
     if (!unit) return
 
-    const dx = targetXInches - unit.x
-    const dy = targetYInches - unit.y
-    const distance = Math.sqrt(dx * dx + dy * dy)
-
-    if (distance > unit.movement) {
-      setMoveMessage(
-        `${unit.owner} – ${unit.name}: move of ${distance.toFixed(1)}" exceeds M${unit.movement}".`,
-      )
-      return
-    }
-
     setUnits((prev) =>
       prev.map((u) =>
         u.id === unit.id ? { ...u, x: targetXInches, y: targetYInches } : u,
       ),
-    )
-    setMoveMessage(
-      `${unit.owner} – ${unit.name} moves ${distance.toFixed(1)}" (M${unit.movement}).`,
     )
   }
 
@@ -184,11 +167,6 @@ export function GameScreen({ settings, onBackToMenu }: GameScreenProps) {
       <p style={{ marginBottom: '1rem', fontSize: '0.9rem', color: '#9ca3af' }}>
         P1: {settings.player1Faction} · P2: {settings.player2Faction} · Size: {settings.armySize}
       </p>
-      {moveMessage && (
-        <p style={{ marginBottom: '0.75rem', fontSize: '0.85rem', color: '#facc15' }}>
-          {moveMessage}
-        </p>
-      )}
 
       <div
         style={{
