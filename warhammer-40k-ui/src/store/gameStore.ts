@@ -34,7 +34,7 @@ export interface ObjectiveMarker extends Position {
   id: string
 }
 
-export type GameView = 'MENU' | 'SKIRMISH'
+export type GameView = 'MENU' | 'SETUP' | 'SKIRMISH'
 
 export type FactionId = 'Space Marines' | 'Necrons'
 
@@ -91,6 +91,7 @@ export interface GameState {
   setConfig: (partial: Partial<SkirmishConfig>) => void
   startSkirmish: () => void
   resetGame: () => void
+  setGameView: (view: GameView) => void
 }
 
 const phaseOrder: TurnPhase[] = ['COMMAND', 'MOVEMENT', 'SHOOTING', 'CHARGE', 'FIGHT']
@@ -487,6 +488,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       selection: { selectedUnitId: null, targetUnitId: null },
       battleLog: [],
       diceRolls: null,
+    })),
+
+  setGameView: (view) =>
+    set((state) => ({
+      ...state,
+      gameView: view,
     })),
 }))
 

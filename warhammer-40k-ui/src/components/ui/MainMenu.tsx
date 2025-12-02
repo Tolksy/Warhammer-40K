@@ -1,7 +1,7 @@
 import { useGameStore } from '../../store/gameStore'
 
 const MainMenu = () => {
-  const startSkirmish = useGameStore((state) => state.startSkirmish)
+  const setGameView = useGameStore((state) => state.setGameView)
 
   return (
     <div className="min-h-screen bg-black text-slate-100">
@@ -15,7 +15,7 @@ const MainMenu = () => {
           <button
             type="button"
             className="w-full rounded bg-yellow-400 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-slate-900 hover:bg-yellow-300"
-            onClick={() => startSkirmish()}
+            onClick={() => setGameView('SETUP')}
           >
             Start Skirmish
           </button>

@@ -4,5 +4,6 @@ export { default as ShootingPanel } from './ShootingPanel'
 export { default as DiceTray } from './DiceTray'
 export { default as MainMenu } from './MainMenu'
 export { default as BattleScreen } from './BattleScreen'
+export { default as SkirmishSetup } from './SkirmishSetup'
 
 
